@@ -24,6 +24,9 @@ table{width:100%;border-collapse:collapse}td,th{padding:10px 5px;border-bottom:1
 <section id="auth" class="card">
 <h2>Player Login</h2>
 <input id="name" class="field" placeholder="Player name">
+<select id="country" class="field"><option value="">Select country</option>
+<option>Algeria</option><option>Austria</option><option>Azerbaijan</option><option>Bahrain</option><option>Belgium</option><option>Croatia</option><option>Egypt</option><option>Germany</option><option>Iran</option><option>Israel</option><option>Jordan</option><option>Kazakhstan</option><option>Kuwait</option><option>Lebanon</option><option>Morocco</option><option>Oman</option><option>Poland</option><option>Qatar</option><option>Saudi Arabia</option><option>Serbia</option><option>Slovakia</option><option>Slovenia</option><option>South Africa</option><option>Switzerland</option><option>Tunisia</option><option>Turkey</option><option>United Arab Emirates</option><option>Other</option>
+</select>
 <input id="email" class="field" type="email" placeholder="Email">
 <input id="password" class="field" type="password" placeholder="Password">
 <button id="login">Log in</button>
@@ -58,7 +61,7 @@ const $=id=>document.getElementById(id);
 let questions=[], idx=0, roundId=null, localScore=0;
 function view(id){['auth','home','game','result','board'].forEach(x=>$(x).classList.toggle('hidden',x!==id))}
 async function session(){const {data}=await sb.auth.getSession(); if(data.session){$('who').textContent=data.session.user.email;view('home')}else view('auth')}
-$('signup').onclick=async()=>{const email=$('email').value.trim(),password=$('password').value,name=$('name').value.trim();$('authmsg').textContent='Creating account…';const {data,error}=await sb.auth.signUp({email,password,options:{data:{player_name:name||email.split('@')[0]}}});$('authmsg').textContent=error?error.message:(data.session?'Account created.':'Account created. Check your email to confirm, then log in.');if(data.session)session()}
+$('signup').onclick=async()=>{const email=$('email').value.trim(),password=$('password').value,name=$('name').value.trim(),country=$('country').value;if(!country){$('authmsg').textContent='Please select your country.';return}$('authmsg').textContent='Creating account…';const {data,error}=await sb.auth.signUp({email,password,options:{data:{player_name:name||email.split('@')[0],country}}});if(!error&&data.user){const {error:profileError}=await sb.from('profiles').update({country}).eq('id',data.user.id);if(profileError){$('authmsg').textContent='Account created, but country could not be saved: '+profileError.message;return}}$('authmsg').textContent=error?error.message:(data.session?'Account created.':'Account created. You can now log in.');if(data.session)session()}
 $('login').onclick=async()=>{const {error}=await sb.auth.signInWithPassword({email:$('email').value.trim(),password:$('password').value});$('authmsg').textContent=error?error.message:'';if(!error)session()}
 $('logout').onclick=async()=>{await sb.auth.signOut();session()}
 $('start').onclick=async()=>{localScore=0;const {data,error}=await sb.rpc('start_round');if(error){alert(error.message);return}questions=data;idx=0;roundId=data[0]?.round_id;if(!roundId){alert('No questions returned.');return}view('game');render()}
