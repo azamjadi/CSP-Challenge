@@ -90,6 +90,39 @@ $('signup').onclick=async()=>{const email=$('email').value.trim(),password=$('pa
 $('login').onclick=async()=>{const email=$('email').value.trim(),password=$('password').value;if(!email||!password){$('authmsg').textContent='Please enter your email and password.';return}$('login').disabled=true;$('authmsg').textContent='Logging in…';try{const {error}=await sb.auth.signInWithPassword({email,password});$('authmsg').textContent=error?(error.message==='Invalid login credentials'?'Incorrect email or password. Please try again.':error.message):'';if(!error)await session()}finally{$('login').disabled=false}};
 $('reset').onclick=async()=>{const email=$('email').value.trim();if(!email){$('authmsg').textContent='Please enter your email.';return}$('reset').disabled=true;try{const {error}=await sb.auth.resetPasswordForEmail(email,{redirectTo:location.origin+location.pathname});$('authmsg').textContent=error?error.message:'If an account exists for this email, a password reset link has been sent.'}finally{$('reset').disabled=false}};
 
+
+const competencyAreas=['LV-Trad','HV-Trad','CRT','CSP'];
+const productNames=['UltiSync','VDI System / Simulator'];
+const experienceChoices=[['unknown','Not specified'],['none','No experience'],['intermediate','Intermediate'],['advanced','Very experienced']];
+const certificationChoices=[['unknown','Unknown'],['no','No'],['yes','Yes']];
+const trainingChoices=[['unknown','Not specified'],['not_trained','Not trained'],['in_progress','In progress'],['completed','Completed']];
+function profileSelect(choices,value){const select=document.createElement('select');select.className='field';for(const [v,label] of choices){const option=document.createElement('option');option.value=v;option.textContent=label;select.appendChild(option)}select.value=value||'unknown';return select}
+function profileRecord(container,name,data,product){const card=document.createElement('div');card.className='record';const title=document.createElement('h4');title.textContent=name;card.appendChild(title);const add=(label,choices,key)=>{const l=document.createElement('label');l.className='small';l.textContent=label;const input=profileSelect(choices,data?.[key]);input.dataset.key=key;card.append(l,input)};if(product)add('Training Status',trainingChoices,'training_status');add('Practical Experience',experienceChoices,'experience_level');add('Certification Status',certificationChoices,'certification_status');if(product){const label=document.createElement('label');label.className='champion';const checkbox=document.createElement('input');checkbox.type='checkbox';checkbox.checked=data?.product_champion===true;checkbox.dataset.key='product_champion';label.append(checkbox,document.createTextNode('Product Champion'));card.appendChild(label)}container.appendChild(card);return card}
+function showDistributorField(){$('distributorfield').classList.toggle('hidden',$('employmenttype').value!=='distributor')}
+$('employmenttype').onchange=showDistributorField;
+async function loadExtendedProfile(userId){
+ const [professional,competencies,products]=await Promise.all([
+  sb.from('player_professional_info').select('*').eq('user_id',userId).maybeSingle(),
+  sb.from('player_competencies').select('*').eq('user_id',userId),
+  sb.from('player_product_training').select('*').eq('user_id',userId)
+ ]);
+ if(professional.error||competencies.error||products.error){$('settingsmsg').textContent='Extended profile database is not yet activated. Run SQL migration 08 before saving these fields.';console.warn('Extended profile:',professional.error,competencies.error,products.error)}
+ const p=professional.data||{};
+ $('employmenttype').value=p.employment_type||'';$('distributorname').value=p.distributor_name||'';$('jobcategory').value=p.job_category||'';$('jobtitle').value=p.job_title||'';$('crmexperience').value=p.crm_experience||'';showDistributorField();
+ $('competencyfields').replaceChildren();$('productfields').replaceChildren();
+ for(const area of competencyAreas)profileRecord($('competencyfields'),area,(competencies.data||[]).find(x=>x.area===area),false);
+ for(const product of productNames)profileRecord($('productfields'),product,(products.data||[]).find(x=>x.product===product),true);
+}
+async function saveExtendedProfile(userId){
+ const employment=$('employmenttype').value||null,distributor=$('distributorname').value.trim();
+ if(employment==='distributor'&&!distributor)throw Error('Please enter your distributor name.');
+ const professional={user_id:userId,employment_type:employment,distributor_name:employment==='distributor'?distributor:null,job_category:$('jobcategory').value||null,job_title:$('jobtitle').value.trim()||null,crm_experience:$('crmexperience').value||null,updated_at:new Date().toISOString()};
+ const result=await sb.from('player_professional_info').upsert(professional,{onConflict:'user_id'});if(result.error)throw result.error;
+ const records=(parent,names,key)=>names.map((name,i)=>{const card=$(parent).children[i],row={user_id:userId,[key]:name,updated_at:new Date().toISOString()};card.querySelectorAll('[data-key]').forEach(el=>row[el.dataset.key]=el.type==='checkbox'?el.checked:el.value);return row});
+ const comp=await sb.from('player_competencies').upsert(records('competencyfields',competencyAreas,'area'),{onConflict:'user_id,area'});if(comp.error)throw comp.error;
+ const prod=await sb.from('player_product_training').upsert(records('productfields',productNames,'product'),{onConflict:'user_id,product'});if(prod.error)throw prod.error;
+}
+
 const trainingAreas=['Product Knowledge','CSP Fundamentals','ECG Interpretation','Device Programming','Implant Technique','Clinical Evidence','Anatomy & Imaging Fundamentals'];
 const avatarChoices=['👤','🫀','⚡','🧠','🏆','🩺','🚀','🎯'];
 let selectedAvatar='👤';
@@ -124,7 +157,7 @@ $('showsettings').onclick=async()=>{
  avatarChoices.forEach(a=>{const b=document.createElement('button');b.type='button';b.textContent=a;b.style.cssText='width:49px;margin:0;padding:10px;background:#eaf1fb;color:#172033';b.onclick=()=>{selectedAvatar=a;$('avatarpreview').textContent=a};$('avataroptions').appendChild(b)});
  $('focusoptions').replaceChildren();
  trainingAreas.forEach(area=>{const l=document.createElement('label');l.style.cssText='display:flex;gap:12px;align-items:center;padding:10px 0;border-bottom:1px solid #eee;font-size:14px';const c=document.createElement('input');c.type='checkbox';c.value=area;c.checked=Array.isArray(m.focus_areas)&&m.focus_areas.includes(area);l.append(c,document.createTextNode(area));$('focusoptions').appendChild(l)});
- $('settingsmsg').textContent='';$('passwordmsg').textContent='';view('settings');
+ $('settingsmsg').textContent='';$('passwordmsg').textContent='';view('settings');await loadExtendedProfile(user.id);
 };
 $('settingsback').onclick=()=>view('home');
 $('savesettings').onclick=async()=>{
@@ -137,7 +170,7 @@ $('savesettings').onclick=async()=>{
   if(error){$('settingsmsg').textContent=error.message;return}
   const {data:{user}}=await sb.auth.getUser();
   if(user){const result=await sb.from('profiles').update({country}).eq('id',user.id);if(result.error)console.warn('Profile sync:',result.error.message)}
-  $('settingsmsg').textContent='Profile saved. Focus preferences will apply once personalized rounds are enabled.';
+  try{if(user)await saveExtendedProfile(user.id);$('settingsmsg').textContent='Profile, competencies and training preferences saved.'}catch(saveError){$('settingsmsg').textContent='Basic profile saved, but extended profile could not be saved: '+saveError.message}
  }finally{$('savesettings').disabled=false}
 };
 $('updatepassword').onclick=async()=>{
