@@ -98,10 +98,20 @@ $('showsettings').onclick=async()=>{
  const m=user.user_metadata||{};
  $('settingsname').value=m.player_name||m.full_name||'';
  const {data:storedProfile,error:profileReadError}=await sb.from('profiles').select('country').eq('id',user.id).maybeSingle();
+ // A profile may be readable through the leaderboard RPC even if the direct
+ // profile query is restricted by RLS; use that as a fallback.
+ let leaderboardCountry='';
+ if(!storedProfile?.country){
+  const {data:leaders,error:leadersError}=await sb.rpc('get_leaderboard');
+  if(!leadersError&&Array.isArray(leaders)){
+   const current=leaders.find(p=>p.user_id===user.id||p.id===user.id||(p.player_name&&p.player_name.trim().toLowerCase()===(m.player_name||'').trim().toLowerCase()));
+   leaderboardCountry=current?.country||'';
+  }
+ }
  if(profileReadError)console.warn('Profile country read:',profileReadError.message);
  const countrySelect=$('settingscountry');
  countrySelect.innerHTML=$('country').innerHTML;
- const savedCountry=storedProfile?.country||m.country||'';
+ const savedCountry=storedProfile?.country||m.country||leaderboardCountry||'';
  const normalized=savedCountry.trim().toLowerCase();
  const match=[...countrySelect.options].find(o=>o.value.trim().toLowerCase()===normalized||o.textContent.trim().toLowerCase()===normalized);
  if(match){countrySelect.value=match.value}
