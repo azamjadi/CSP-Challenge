@@ -99,10 +99,14 @@ $('showsettings').onclick=async()=>{
  $('settingsname').value=m.player_name||m.full_name||'';
  const {data:storedProfile,error:profileReadError}=await sb.from('profiles').select('country').eq('id',user.id).maybeSingle();
  if(profileReadError)console.warn('Profile country read:',profileReadError.message);
- const savedCountry=storedProfile?.country||m.country||'';
  const countrySelect=$('settingscountry');
- countrySelect.value=savedCountry;
- if(savedCountry&&!countrySelect.value){const match=[...countrySelect.options].find(o=>o.value.toLowerCase()===savedCountry.toLowerCase());if(match)countrySelect.value=match.value;}
+ countrySelect.innerHTML=$('country').innerHTML;
+ const savedCountry=storedProfile?.country||m.country||'';
+ const normalized=savedCountry.trim().toLowerCase();
+ const match=[...countrySelect.options].find(o=>o.value.trim().toLowerCase()===normalized||o.textContent.trim().toLowerCase()===normalized);
+ if(match){countrySelect.value=match.value}
+ else if(savedCountry){const option=document.createElement('option');option.value=savedCountry;option.textContent=savedCountry;countrySelect.add(option);countrySelect.value=savedCountry}
+ else countrySelect.value='';
  selectedAvatar=avatarChoices.includes(m.avatar)?m.avatar:'👤';
  $('avatarpreview').textContent=selectedAvatar;
  $('avataroptions').replaceChildren();
