@@ -97,7 +97,12 @@ $('showsettings').onclick=async()=>{
  const {data:{user}}=await sb.auth.getUser();if(!user)return;
  const m=user.user_metadata||{};
  $('settingsname').value=m.player_name||m.full_name||'';
- $('settingscountry').value=m.country||'';
+ const {data:storedProfile,error:profileReadError}=await sb.from('profiles').select('country').eq('id',user.id).maybeSingle();
+ if(profileReadError)console.warn('Profile country read:',profileReadError.message);
+ const savedCountry=storedProfile?.country||m.country||'';
+ const countrySelect=$('settingscountry');
+ countrySelect.value=savedCountry;
+ if(savedCountry&&!countrySelect.value){const match=[...countrySelect.options].find(o=>o.value.toLowerCase()===savedCountry.toLowerCase());if(match)countrySelect.value=match.value;}
  selectedAvatar=avatarChoices.includes(m.avatar)?m.avatar:'👤';
  $('avatarpreview').textContent=selectedAvatar;
  $('avataroptions').replaceChildren();
