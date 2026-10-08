@@ -88,6 +88,46 @@ $('togglepassword').onclick=()=>{const visible=$('password').type==='text';$('pa
 $('signup').onclick=async()=>{const email=$('email').value.trim(),password=$('password').value,name=$('name').value.trim(),country=$('country').value;if(!name||!country||!email||!password){$('authmsg').textContent='Please complete all fields.';return}if(name.split(/\s+/).filter(Boolean).length<2){$('authmsg').textContent='Please enter your first and last name.';return}if(password.length<6){$('authmsg').textContent='Please use a password with at least 6 characters.';return}$('signup').disabled=true;$('authmsg').textContent='Creating account…';try{const {data,error}=await sb.auth.signUp({email,password,options:{data:{player_name:name,country}}});if(error){$('authmsg').textContent=error.message;return}if(data.session){const {error:profileError}=await sb.from('profiles').update({country}).eq('id',data.user.id);if(profileError)console.warn('Country update:',profileError.message);await session()}else{$('authmsg').textContent='Account created. Check your email if confirmation is required, then log in.'}}finally{$('signup').disabled=false}};
 $('login').onclick=async()=>{const email=$('email').value.trim(),password=$('password').value;if(!email||!password){$('authmsg').textContent='Please enter your email and password.';return}$('login').disabled=true;$('authmsg').textContent='Logging in…';try{const {error}=await sb.auth.signInWithPassword({email,password});$('authmsg').textContent=error?(error.message==='Invalid login credentials'?'Incorrect email or password. Please try again.':error.message):'';if(!error)await session()}finally{$('login').disabled=false}};
 $('reset').onclick=async()=>{const email=$('email').value.trim();if(!email){$('authmsg').textContent='Please enter your email.';return}$('reset').disabled=true;try{const {error}=await sb.auth.resetPasswordForEmail(email,{redirectTo:location.origin+location.pathname});$('authmsg').textContent=error?error.message:'If an account exists for this email, a password reset link has been sent.'}finally{$('reset').disabled=false}};
+
+const trainingAreas=['Product Knowledge','CSP Fundamentals','ECG Interpretation','Device Programming','Implant Technique','Clinical Evidence','Anatomy & Imaging Fundamentals'];
+const avatarChoices=['👤','🫀','⚡','🧠','🏆','🩺','🚀','🎯'];
+let selectedAvatar='👤';
+$('settingscountry').innerHTML=$('country').innerHTML;
+$('showsettings').onclick=async()=>{
+ const {data:{user}}=await sb.auth.getUser();if(!user)return;
+ const m=user.user_metadata||{};
+ $('settingsname').value=m.player_name||m.full_name||'';
+ $('settingscountry').value=m.country||'';
+ selectedAvatar=avatarChoices.includes(m.avatar)?m.avatar:'👤';
+ $('avatarpreview').textContent=selectedAvatar;
+ $('avataroptions').replaceChildren();
+ avatarChoices.forEach(a=>{const b=document.createElement('button');b.type='button';b.textContent=a;b.style.cssText='width:49px;margin:0;padding:10px;background:#eaf1fb;color:#172033';b.onclick=()=>{selectedAvatar=a;$('avatarpreview').textContent=a};$('avataroptions').appendChild(b)});
+ $('focusoptions').replaceChildren();
+ trainingAreas.forEach(area=>{const l=document.createElement('label');l.style.cssText='display:flex;gap:12px;align-items:center;padding:10px 0;border-bottom:1px solid #eee;font-size:14px';const c=document.createElement('input');c.type='checkbox';c.value=area;c.checked=Array.isArray(m.focus_areas)&&m.focus_areas.includes(area);l.append(c,document.createTextNode(area));$('focusoptions').appendChild(l)});
+ $('settingsmsg').textContent='';$('passwordmsg').textContent='';view('settings');
+};
+$('settingsback').onclick=()=>view('home');
+$('savesettings').onclick=async()=>{
+ const name=$('settingsname').value.trim(),country=$('settingscountry').value;
+ if(name.split(/\s+/).length<2||!country){$('settingsmsg').textContent='Please enter your first and last name and country.';return}
+ const focus=[...$('focusoptions').querySelectorAll('input:checked')].map(c=>c.value);
+ $('savesettings').disabled=true;
+ try{
+  const {error}=await sb.auth.updateUser({data:{player_name:name,country,avatar:selectedAvatar,focus_areas:focus}});
+  if(error){$('settingsmsg').textContent=error.message;return}
+  const {data:{user}}=await sb.auth.getUser();
+  if(user){const result=await sb.from('profiles').update({country}).eq('id',user.id);if(result.error)console.warn('Profile sync:',result.error.message)}
+  $('settingsmsg').textContent='Profile saved. Focus preferences will apply once personalized rounds are enabled.';
+ }finally{$('savesettings').disabled=false}
+};
+$('updatepassword').onclick=async()=>{
+ const password=$('newpassword').value;
+ if(password.length<6||password!==$('confirmpassword').value){$('passwordmsg').textContent='Passwords must match and have at least 6 characters.';return}
+ const {error}=await sb.auth.updateUser({password});
+ $('passwordmsg').textContent=error?error.message:'Password updated successfully.';
+ if(!error){$('newpassword').value='';$('confirmpassword').value=''}
+};
+
 $('logout').onclick=async()=>{await sb.auth.signOut();setAuthMode('login');session()};
 sb.auth.onAuthStateChange(async(event)=>{if(event==='PASSWORD_RECOVERY'){const next=prompt('Enter your new password (at least 6 characters):');if(next){if(next.length<6){alert('Password must be at least 6 characters.');return}const {error}=await sb.auth.updateUser({password:next});alert(error?error.message:'Password updated successfully.')}}});
 $('start').onclick=async()=>{const {data:{user}}=await sb.auth.getUser();if(!user){view('auth');return}localScore=0;const {data,error}=await sb.rpc('start_round');if(error){alert(error.message);return}questions=data;idx=0;roundId=data[0]?.round_id;if(!roundId){alert('No questions returned.');return}view('game');render()}
