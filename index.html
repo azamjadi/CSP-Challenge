@@ -76,7 +76,7 @@ const SUPABASE_KEY='sb_publishable_GkicTQkKeMzI537TMyux9A_6gU2xy5C';
 const sb=supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
 const $=id=>document.getElementById(id);
 let questions=[], idx=0, roundId=null, localScore=0, questionStartedAt=0, answering=false;
-function view(id){['auth','completeprofile','home','game','result','board','stats','settings'].forEach(x=>$(x).classList.toggle('hidden',x!==id))}
+function view(id){['auth','awaitapproval','completeprofile','home','game','result','board','stats','settings'].forEach(x=>$(x).classList.toggle('hidden',x!==id))}
 let authMode='login';
 function setAuthMode(mode){authMode=mode;const signup=mode==='signup',reset=mode==='reset';$('authheading').textContent=signup?'Create your account':reset?'Reset your password':'Welcome back';$('authintro').textContent=signup?'Join the CSP Challenge.':reset?'We will email you a password reset link.':'Log in to continue your CSP Challenge.';$('registerfields').classList.toggle('hidden',!signup);$('password').parentElement.classList.toggle('hidden',reset);$('login').classList.toggle('hidden',mode!=='login');$('signup').classList.toggle('hidden',!signup);$('reset').classList.toggle('hidden',!reset);$('switchsignup').classList.toggle('hidden',mode!=='login');$('forgot').classList.toggle('hidden',mode!=='login');$('switchlogin').classList.toggle('hidden',mode==='login');$('resetfields').classList.toggle('hidden',!reset);$('password').autocomplete=signup?'new-password':'current-password';$('authmsg').textContent=''}
 async function session(){const {data}=await sb.auth.getSession();if(!data.session){view('auth');return}const user=data.session.user;
