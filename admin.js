@@ -4,9 +4,9 @@ let users=[];
 function view(name){for(const id of ['login','denied','dashboard'])$(id).classList.toggle('hidden',id!==name)}
 async function init(){
  const {data:{session}}=await sb.auth.getSession();
- if(!session){view('login');return}
+ if(!session){window.location.replace('./');return}
  const {data,error}=await sb.rpc('is_csp_super_admin');
- if(error||data!==true){view('denied');return}
+ if(error||data!==true){window.location.replace('./');return}
  view('dashboard');await refresh();
 }
 async function refresh(){
@@ -47,12 +47,7 @@ async function setStatus(user,status,button){
  if(error){$('message').textContent='Update failed: '+error.message;button.disabled=false;return}
  await refresh();
 }
-$('signin').onclick=async()=>{
- const {error}=await sb.auth.signInWithPassword({email:$('email').value.trim(),password:$('password').value});
- if(error){$('loginerror').textContent=error.message;return}
- $('password').value='';await init();
-};
-for(const id of ['signout','deniedout'])$(id).onclick=async()=>{await sb.auth.signOut();view('login')};
+$('signout').onclick=async()=>{await sb.auth.signOut();window.location.replace('./')};
 $('reload').onclick=refresh;
 for(const id of ['search','status','country'])$(id).addEventListener(id==='search'?'input':'change',render);
 init();
