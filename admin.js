@@ -1,7 +1,7 @@
 const sb=supabase.createClient('https://zcwyyifwjtyreevcbvwz.supabase.co','sb_publishable_GkicTQkKeMzI537TMyux9A_6gU2xy5C');
 const $=id=>document.getElementById(id);
 let users=[];
-function view(name){$('dashboard').classList.toggle('hidden',name!=='dashboard')}
+function view(name){$('dashboard').classList.toggle('hidden',name!=='dashboard');const loading=$('adminloading');if(loading)loading.classList.toggle('hidden',name==='dashboard')}
 async function init(){
  const {data:{session}}=await sb.auth.getSession();
  if(!session){window.location.replace('./');return}
@@ -50,4 +50,4 @@ async function setStatus(user,status,button){
 $('signout').onclick=async()=>{await sb.auth.signOut();window.location.replace('./')};
 $('reload').onclick=refresh;
 for(const id of ['search','status','country'])$(id).addEventListener(id==='search'?'input':'change',render);
-init();
+init().catch(error=>{const el=$('adminloadingmessage');if(el)el.textContent='Unable to initialize dashboard: '+error.message;});
