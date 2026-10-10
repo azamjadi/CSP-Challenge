@@ -44,7 +44,7 @@ button:disabled{opacity:.55}.hidden{display:none}.top{display:flex;gap:10px;just
 <p id="authmsg" class="small" role="status" aria-live="polite"></p>
 </section>
 
-<section id="awaitapproval" class="card hidden"><h2 id="accessheading">Awaiting administrator approval</h2><p id="accessmessage">Your account is pending review. You will be able to play once an administrator approves your registration.</p><button id="accessrefresh">Check approval status</button><button id="accesslogout" class="secondary">Log out</button></section>
+<section id="awaitapproval" class="card hidden"><h2 id="accessheading">Awaiting administrator approval</h2><p id="accessmessage">Your account is pending review. You will be able to play once an administrator approves your registration.</p><button id="accessrefresh">Check approval status</button><p id="accessfeedback" class="small" role="status" aria-live="polite"></p><button id="accesslogout" class="secondary">Log out</button></section>
 <section id="completeprofile" class="card hidden"><h2>Complete your profile</h2><p class="small">Please select your country before playing. This is required for the leaderboard.</p><select id="profilecountry" class="field" required><option value="">Select country</option></select><button id="savecountry">Save country</button><p id="profilemsg" class="small" role="status"></p><button id="profilelogout" class="secondary">Log out</button></section>
 <section id="home" class="card hidden">
 <div class="top"><div><h2 style="margin:0">Ready?</h2><div id="who" class="small"></div></div><span class="pill">3 questions</span></div>
@@ -187,7 +187,23 @@ $('updatepassword').onclick=async()=>{
  if(!error){$('newpassword').value='';$('confirmpassword').value=''}
 };
 
-$('accessrefresh').onclick=session;
+$('accessrefresh').onclick=async()=>{
+ const button=$('accessrefresh'),feedback=$('accessfeedback');
+ button.disabled=true;button.textContent='Checking…';feedback.textContent='';
+ try{
+  await session();
+  if(!$('awaitapproval').classList.contains('hidden')){
+   const heading=$('accessheading').textContent;
+   const time=new Date().toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
+   feedback.textContent=heading==='Awaiting administrator approval'
+    ?'Checked at '+time+' — approval is still pending.'
+    :heading==='Access verification unavailable'
+     ?'Checked at '+time+' — unable to verify status. Please try again.'
+     :'Checked at '+time+' — '+$('accessmessage').textContent;
+  }
+ }catch(error){feedback.textContent='Status check failed. Please try again.'}
+ finally{button.disabled=false;button.textContent='Check approval status'}
+};
 $('accesslogout').onclick=async()=>{await sb.auth.signOut();setAuthMode('login');view('auth')};
 $('logout').onclick=async()=>{await sb.auth.signOut();setAuthMode('login');session()};
 sb.auth.onAuthStateChange(async(event)=>{if(event==='PASSWORD_RECOVERY'){const next=prompt('Enter your new password (at least 6 characters):');if(next){if(next.length<6){alert('Password must be at least 6 characters.');return}const {error}=await sb.auth.updateUser({password:next});alert(error?error.message:'Password updated successfully.')}}});
