@@ -1,7 +1,7 @@
 const sb=supabase.createClient('https://zcwyyifwjtyreevcbvwz.supabase.co','sb_publishable_GkicTQkKeMzI537TMyux9A_6gU2xy5C');
 const $=id=>document.getElementById(id);
 let users=[];
-function view(name){for(const id of ['login','denied','dashboard'])$(id).classList.toggle('hidden',id!==name)}
+function view(name){$('dashboard').classList.toggle('hidden',name!=='dashboard')}
 async function init(){
  const {data:{session}}=await sb.auth.getSession();
  if(!session){window.location.replace('./');return}
