@@ -241,7 +241,15 @@ async function loadLearningJourney(targetId='learningjourney'){
 }
 async function showMyStatistics(){view('stats');$('statsgreeting').textContent='My Learning Journey';const {data:{user}}=await sb.auth.getUser();if(user){const {data:profile}=await sb.from('profiles').select('player_name').eq('id',user.id).maybeSingle();const name=profile?.player_name||user.user_metadata?.player_name;if(name)$('statsgreeting').textContent=name.split(/\s+/)[0]+', keep climbing!'}await Promise.all([loadPlayerStats('statsplayer'),loadLearningJourney('statsjourney')])}
 async function board(){view('board');$('boardcontent').textContent='Loading…';const {data,error}=await sb.rpc('get_leaderboard');if(error){$('boardcontent').textContent=error.message;return}let h='<table><tr><th>#</th><th>Player</th><th>Country</th><th>Score</th></tr>';data.slice(0,50).forEach((r,i)=>h+='<tr><td>'+(i+1)+'</td><td>'+escapeHtml(r.player_name)+'</td><td>'+countryLabel(r.country)+'</td><td>'+r.total_score+'</td></tr>');$('boardcontent').innerHTML=h+'</table>'}
-function countryLabel(s){if(!s)return '—';const codes={'Germany':'DE','United Arab Emirates':'AE','Belgium':'BE','Saudi Arabia':'SA','Switzerland':'CH','Austria':'AT','Turkey':'TR','Serbia':'RS','Croatia':'HR','Poland':'PL','Algeria':'DZ','Morocco':'MA','Tunisia':'TN','Egypt':'EG','Iran':'IR','Israel':'IL','Jordan':'JO','Lebanon':'LB','Kuwait':'KW','Bahrain':'BH','Oman':'OM','Qatar':'QA','Azerbaijan':'AZ','Kazakhstan':'KZ','Slovakia':'SK','Slovenia':'SI','South Africa':'ZA'};const code=codes[s];const flag=code?String.fromCodePoint(...[...code].map(x=>127397+x.charCodeAt(0)))+' ':'';return flag+escapeHtml(s)}
+function countryLabel(value){
+ if(value==null||String(value).trim()==='')return '—';
+ const original=String(value).trim();
+ const normalized=original.normalize('NFKC').replace(/\s+/g,' ').toLowerCase();
+ const codes={'germany':'DE','united arab emirates':'AE','uae':'AE','belgium':'BE','saudi arabia':'SA','switzerland':'CH','austria':'AT','turkey':'TR','türkiye':'TR','serbia':'RS','croatia':'HR','poland':'PL','algeria':'DZ','morocco':'MA','tunisia':'TN','egypt':'EG','iran':'IR','islamic republic of iran':'IR','iran, islamic republic of':'IR','israel':'IL','jordan':'JO','lebanon':'LB','kuwait':'KW','bahrain':'BH','oman':'OM','qatar':'QA','azerbaijan':'AZ','kazakhstan':'KZ','slovakia':'SK','slovenia':'SI','south africa':'ZA'};
+ const code=codes[normalized]||(/^[a-z]{2}$/.test(normalized)?normalized.toUpperCase():null);
+ const flag=code?String.fromCodePoint(...[...code].map(x=>127397+x.charCodeAt(0)))+' ':'';
+ return flag+escapeHtml(original);
+}
 function escapeHtml(s){const d=document.createElement('div');d.textContent=s||'Player';return d.innerHTML}
 $('showstats').onclick=showMyStatistics;$('statsback').onclick=()=>view('home');$('showboard').onclick=board;$('resultboard').onclick=board;$('back').onclick=()=>view('home');$('again').onclick=()=>$('start').click();
 sb.auth.onAuthStateChange(()=>session());session();
