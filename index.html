@@ -44,7 +44,7 @@ button:disabled{opacity:.55}.hidden{display:none}.top{display:flex;gap:10px;just
 <p id="authmsg" class="small" role="status" aria-live="polite"></p>
 </section>
 
-<section id="awaitapproval" class="card hidden"><h2 id="accessheading">Awaiting administrator approval</h2><p id="accessmessage">Your account is pending review. You will be able to play once an administrator approves your registration.</p><button id="accessrefresh">Check approval status</button><button id="apitest" class="secondary" type="button" style="margin-top:10px">Test API security</button><p id="apitestresult" class="small" role="status" aria-live="polite"></p><p id="accessfeedback" class="small" role="status" aria-live="polite"></p><button id="accesslogout" class="secondary">Log out</button></section>
+<section id="awaitapproval" class="card hidden"><h2 id="accessheading">Awaiting administrator approval</h2><p id="accessmessage">Your account is pending review. You will be able to play once an administrator approves your registration.</p><button id="accessrefresh">Check approval status</button><p id="accessfeedback" class="small" role="status" aria-live="polite"></p><button id="accesslogout" class="secondary">Log out</button></section>
 <section id="completeprofile" class="card hidden"><h2>Complete your profile</h2><p class="small">Please select your country before playing. This is required for the leaderboard.</p><select id="profilecountry" class="field" required><option value="">Select country</option></select><button id="savecountry">Save country</button><p id="profilemsg" class="small" role="status"></p><button id="profilelogout" class="secondary">Log out</button></section>
 <section id="home" class="card hidden">
 <div class="top"><div><h2 style="margin:0">Ready?</h2><div id="who" class="small"></div></div><span class="pill">3 questions</span></div>
@@ -203,21 +203,6 @@ $('accessrefresh').onclick=async()=>{
   }
  }catch(error){feedback.textContent='Status check failed. Please try again.'}
  finally{button.disabled=false;button.textContent='Check approval status'}
-};
-$('apitest').onclick=async()=>{
- const button=$('apitest'),result=$('apitestresult');
- button.disabled=true;result.textContent='Calling start_round() directly…';
- try{
-  const {data,error}=await sb.rpc('start_round');
-  if(error){
-   result.textContent=error.message.includes('Account not approved or suspended')
-    ?'PASS — API blocked the pending player: '+error.message
-    :'API returned an error: '+error.message;
-  }else{
-   result.textContent='FAIL — API allowed a round ('+(data?.[0]?.round_id||'unknown')+'). Do not approve more players until this is investigated.';
-  }
- }catch(e){result.textContent='Request failed: '+(e?.message||String(e))}
- finally{button.disabled=false}
 };
 $('accesslogout').onclick=async()=>{await sb.auth.signOut();setAuthMode('login');view('auth')};
 $('logout').onclick=async()=>{await sb.auth.signOut();setAuthMode('login');session()};
